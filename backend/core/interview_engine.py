@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
+import os
 from typing import Dict, List
 from uuid import uuid4
 
@@ -42,6 +43,8 @@ class InterviewEngine:
     def __init__(self) -> None:
         self.sessions: Dict[str, InterviewSession] = {}
         self.decision_engine = HiringDecisionEngine()
+        self.session_ttl_seconds = max(300, int(os.getenv("INTERVIEW_SESSION_TTL_SECONDS", "21600")))
+        self.max_sessions = max(20, int(os.getenv("INTERVIEW_MAX_SESSIONS", "500")))
 
     def initiate(self) -> Dict[str, object]:
         return {
@@ -57,6 +60,7 @@ class InterviewEngine:
         candidate_name: str = "Candidate",
         max_rounds: int = 2,
     ) -> Dict[str, object]:
+        self._prune_sessions()
         baseline_result = self.decision_engine.evaluate(resume_text, jd_text)
         job_pack = extract_job_features(jd_text)
         job_features = job_pack["features"]
@@ -103,6 +107,7 @@ class InterviewEngine:
         }
 
     def submit_round_answers(self, session_id: str, answers: List[Dict[str, str]]) -> Dict[str, object]:
+        self._prune_sessions()
         session = self._get_session(session_id)
         if session.is_finished:
             return {
@@ -175,6 +180,7 @@ class InterviewEngine:
         }
 
     def get_session_status(self, session_id: str) -> Dict[str, object]:
+        self._prune_sessions()
         session = self._get_session(session_id)
         if session.is_finished:
             return {
@@ -262,3 +268,32 @@ class InterviewEngine:
         if not session:
             raise KeyError(f"Interview session '{session_id}' not found.")
         return session
+
+    def _prune_sessions(self) -> None:
+        now = datetime.now(timezone.utc)
+
+        # Drop expired sessions first.
+        expired_ids: List[str] = []
+        for session_id, session in self.sessions.items():
+            try:
+                created = datetime.fromisoformat(session.created_at)
+            except ValueError:
+                created = now
+            age = (now - created).total_seconds()
+            if age > self.session_ttl_seconds:
+                expired_ids.append(session_id)
+
+        for session_id in expired_ids:
+            self.sessions.pop(session_id, None)
+
+        # Enforce max session cap by removing oldest sessions.
+        if len(self.sessions) <= self.max_sessions:
+            return
+
+        ordered = sorted(
+            self.sessions.values(),
+            key=lambda s: s.created_at,
+        )
+        overflow = len(self.sessions) - self.max_sessions
+        for session in ordered[:overflow]:
+            self.sessions.pop(session.session_id, None)

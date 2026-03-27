@@ -81,11 +81,26 @@ def extract_years_of_experience(text: str) -> float:
 def extract_skills(text: str, skill_lexicon: Set[str] | None = None) -> List[str]:
     lexicon = skill_lexicon or SKILL_KEYWORDS
     normalized = normalize_text(text)
+    tokens = set(tokenize(normalized))
     found: Set[str] = set()
 
     for skill in lexicon:
-        if skill in normalized:
-            found.add(skill)
+        skill_norm = skill.strip().lower()
+        if not skill_norm:
+            continue
+
+        # Use token and boundary-aware matching to avoid false positives
+        # like "java" matching inside "javascript".
+        if " " in skill_norm:
+            pattern = rf"(?<![a-z0-9]){re.escape(skill_norm)}(?![a-z0-9])"
+            if re.search(pattern, normalized):
+                found.add(skill_norm)
+        elif skill_norm in tokens:
+            found.add(skill_norm)
+        else:
+            pattern = rf"(?<![a-z0-9]){re.escape(skill_norm)}(?![a-z0-9])"
+            if re.search(pattern, normalized):
+                found.add(skill_norm)
 
     # Pick up simple "skills: x, y, z" patterns.
     skills_blocks = re.findall(r"skills?\s*[:\-]\s*([^.;]+)", normalized)
