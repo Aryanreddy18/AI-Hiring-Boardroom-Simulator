@@ -2,9 +2,12 @@ from __future__ import annotations
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from dotenv import load_dotenv
 
 from backend.routes.hiring import router as hiring_router
 
+
+load_dotenv()
 
 app = FastAPI(title="AI Hiring Boardroom Simulator API", version="1.0.0")
 
