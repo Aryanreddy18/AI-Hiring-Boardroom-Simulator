@@ -19,6 +19,7 @@ class HiringEvaluateResponse(BaseModel):
     pipeline: dict
     agent_reviews: list
     debate: dict
+    supervisor_review: dict
     final_decision: dict
 
 

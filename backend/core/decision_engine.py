@@ -5,6 +5,7 @@ from typing import Dict, List
 
 from backend.agents.hr_agent import evaluate_hr_fit
 from backend.agents.manager_agent import evaluate_managerial_fit
+from backend.agents.supervisor_agent import supervise_panel
 from backend.agents.tech_agent import evaluate_technical_fit
 from backend.core.debate_engine import run_debate
 from backend.core.features_extractor import extract_candidate_features, extract_job_features
@@ -45,20 +46,24 @@ class HiringDecisionEngine:
 
         reviews: List[Dict[str, object]] = [tech_review, manager_review, hr_review]
         debate = run_debate(reviews)
+        supervisor_review = supervise_panel(
+            agent_reviews=reviews,
+            debate_summary=debate,
+            text_similarity=text_similarity,
+            strong_hire_cutoff=self.strong_hire_cutoff,
+            hire_cutoff=self.hire_cutoff,
+        )
 
-        final_score = (debate["weighted_score"] * 0.85) + (text_similarity * 100 * 0.15)
-        final_score = round(final_score, 2)
-
-        if final_score >= self.strong_hire_cutoff:
-            decision = "strong_hire"
-        elif final_score >= self.hire_cutoff:
-            decision = "hire"
-        elif final_score >= 55:
-            decision = "hold"
-        else:
-            decision = "reject"
-
-        explanation = self._build_explanation(decision, final_score, skill_match, exp_match, debate)
+        final_score = float(supervisor_review["blended_score"])
+        decision = str(supervisor_review["decision"])
+        explanation = self._build_explanation(
+            decision=decision,
+            score=final_score,
+            skill_match=skill_match,
+            exp_match=exp_match,
+            debate=debate,
+            supervisor=supervisor_review,
+        )
 
         return {
             "pipeline": {
@@ -80,6 +85,7 @@ class HiringDecisionEngine:
             },
             "agent_reviews": reviews,
             "debate": debate,
+            "supervisor_review": supervisor_review,
             "final_decision": {
                 "decision": decision,
                 "score": final_score,
@@ -94,10 +100,15 @@ class HiringDecisionEngine:
         skill_match: Dict[str, float],
         exp_match: float,
         debate: Dict[str, object],
+        supervisor: Dict[str, object],
     ) -> str:
-        return (
+        base = (
             f"Decision={decision} at score {score}. "
             f"Required-skill match is {skill_match['required_score']:.2f}, "
             f"experience alignment is {exp_match:.2f}, "
             f"and panel weighted score is {debate['weighted_score']:.2f}."
         )
+        override_reason = str(supervisor.get("override_reason", "")).strip()
+        if override_reason:
+            return f"{base} {override_reason}"
+        return base
