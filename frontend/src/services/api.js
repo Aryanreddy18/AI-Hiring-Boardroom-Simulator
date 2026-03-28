@@ -19,10 +19,11 @@ function getErrorMessage(error) {
 
 export async function evaluateCandidate(payload) {
   try {
-    const { data } = await api.post("/api/hiring/evaluate", {
-      resume_text: payload.resume_text,
-      jd_text: payload.jd_text,
-    });
+    const formData = new FormData();
+    formData.append("resume_file", payload.resume_file);
+    formData.append("jd_text", payload.jd_text);
+
+    const { data } = await api.post("/api/hiring/evaluate", formData);
     return data;
   } catch (error) {
     throw new Error(getErrorMessage(error));
@@ -31,7 +32,13 @@ export async function evaluateCandidate(payload) {
 
 export async function startInterview(payload) {
   try {
-    const { data } = await api.post("/api/hiring/interview/start", payload);
+    const formData = new FormData();
+    formData.append("resume_file", payload.resume_file);
+    formData.append("jd_text", payload.jd_text);
+    formData.append("candidate_name", payload.candidate_name);
+    formData.append("max_rounds", String(payload.max_rounds));
+
+    const { data } = await api.post("/api/hiring/interview/start", formData);
     return data;
   } catch (error) {
     throw new Error(getErrorMessage(error));

@@ -15,13 +15,12 @@ import { normalizeHiringResult } from "./utils/normalizeHiringResult";
 const initialForm = {
   candidateName: "Candidate",
   maxRounds: 2,
-  resumeText: "",
   jdText: "",
 };
 
-function buildSubmitPayload(form) {
+function buildSubmitPayload(form, resumeFile) {
   return {
-    resume_text: form.resumeText.trim(),
+    resume_file: resumeFile,
     jd_text: form.jdText.trim(),
     candidate_name: form.candidateName.trim() || "Candidate",
     max_rounds: Number(form.maxRounds) || 2,
@@ -39,6 +38,8 @@ export default function App() {
   const [form, setForm] = useState(initialForm);
   const [loadingAction, setLoadingAction] = useState("");
   const [error, setError] = useState("");
+  const [stage, setStage] = useState("upload");
+  const [resumeFile, setResumeFile] = useState(null);
   const [screeningResult, setScreeningResult] = useState(null);
   const [interviewState, setInterviewState] = useState(null);
   const [interviewAnswers, setInterviewAnswers] = useState({});
@@ -56,9 +57,14 @@ export default function App() {
     }));
   };
 
+  const updateResumeFile = (event) => {
+    const selectedFile = event.target.files?.[0] || null;
+    setResumeFile(selectedFile);
+  };
+
   const validateForm = () => {
-    if (form.resumeText.trim().length < 20) {
-      setError("Resume text must be at least 20 characters.");
+    if (!resumeFile) {
+      setError("Please upload a resume file before continuing.");
       return false;
     }
 
@@ -79,7 +85,7 @@ export default function App() {
     try {
       setError("");
       setLoadingAction("analyze");
-      const response = await evaluateCandidate(buildSubmitPayload(form));
+      const response = await evaluateCandidate(buildSubmitPayload(form, resumeFile));
       setScreeningResult(response);
     } catch (requestError) {
       setError(requestError.message);
@@ -96,9 +102,10 @@ export default function App() {
     try {
       setError("");
       setLoadingAction("interview");
-      const response = await startInterview(buildSubmitPayload(form));
+      const response = await startInterview(buildSubmitPayload(form, resumeFile));
       setInterviewState(response);
       setInterviewAnswers(buildAnswerMap(response.questions || []));
+      setStage("interview");
     } catch (requestError) {
       setError(requestError.message);
     } finally {
@@ -164,19 +171,32 @@ export default function App() {
       <div className="app-shell__backdrop" />
       <div className="app-shell__content">
         <Home>
-          <UploadForm
-            form={form}
-            onChange={updateForm}
-            onAnalyze={handleAnalyze}
-            onStartInterview={handleStartInterview}
-            loadingAction={loadingAction}
-          />
+          <section className="stage-indicator surface-card">
+            <div className={`stage-indicator__item ${stage === "upload" ? "is-active" : ""}`}>
+              1. Upload resume
+            </div>
+            <div className={`stage-indicator__item ${stage === "interview" ? "is-active" : ""}`}>
+              2. Live interview
+            </div>
+          </section>
+
+          {stage === "upload" && (
+            <UploadForm
+              form={form}
+              resumeFile={resumeFile}
+              onChange={updateForm}
+              onFileChange={updateResumeFile}
+              onAnalyze={handleAnalyze}
+              onStartInterview={handleStartInterview}
+              loadingAction={loadingAction}
+            />
+          )}
 
           {error && <div className="alert-banner">{error}</div>}
 
-          {normalizedScreening && <Dashboard result={normalizedScreening} />}
+          {stage === "upload" && normalizedScreening && <Dashboard result={normalizedScreening} />}
 
-          {(interviewState || screeningResult) && (
+          {interviewState && (
             <InterviewPanel
               interviewState={interviewState}
               answers={interviewAnswers}

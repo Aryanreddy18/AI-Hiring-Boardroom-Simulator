@@ -7,7 +7,9 @@ const fieldLabels = {
 
 export default function UploadForm({
   form,
+  resumeFile,
   onChange,
+  onFileChange,
   onAnalyze,
   onStartInterview,
   loadingAction,
@@ -25,22 +27,23 @@ export default function UploadForm({
         <p className="eyebrow">Live hiring workspace</p>
         <h1>AI Hiring Boardroom Simulator</h1>
         <p>
-          Paste a resume and job description to run the screening board. Start
-          the interview flow when you want the panel to ask live follow-up
-          questions.
+          Upload the candidate resume, add job description context, and launch
+          a live panel interview where each AI agent asks questions and
+          contributes to the final decision.
         </p>
       </div>
 
       <div className="form-grid">
         <label className="field field--wide">
-          <span>Resume text</span>
-          <textarea
-            name="resumeText"
-            value={form.resumeText}
-            onChange={onChange}
-            placeholder="Paste the candidate's resume text here..."
-            rows={12}
+          <span>Resume file</span>
+          <input
+            type="file"
+            accept=".pdf,.doc,.docx,.txt,.md,.rtf"
+            onChange={onFileChange}
           />
+          <small className="field-hint">
+            {resumeFile ? `Selected: ${resumeFile.name}` : "Supported: PDF, DOCX, DOC, TXT, MD, RTF"}
+          </small>
         </label>
 
         <label className="field field--wide">

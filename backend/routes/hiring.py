@@ -37,7 +37,10 @@ async def evaluate_candidate(
     if len(resume_text.strip()) < 20:
         raise HTTPException(status_code=400, detail="Resume content is too short after extraction.")
 
-    return engine.evaluate(resume_text, jd_text)
+    try:
+        return engine.evaluate(resume_text, jd_text)
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=f"Evaluation failed: {exc}") from exc
 
 
 class InterviewAnswerItem(BaseModel):
@@ -70,12 +73,15 @@ async def start_interview(
     if len(resume_text.strip()) < 20:
         raise HTTPException(status_code=400, detail="Resume content is too short after extraction.")
 
-    return interview_engine.start_interview(
-        resume_text=resume_text,
-        jd_text=jd_text,
-        candidate_name=candidate_name,
-        max_rounds=max_rounds,
-    )
+    try:
+        return interview_engine.start_interview(
+            resume_text=resume_text,
+            jd_text=jd_text,
+            candidate_name=candidate_name,
+            max_rounds=max_rounds,
+        )
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=f"Interview start failed: {exc}") from exc
 
 
 @router.post("/interview/{session_id}/respond")

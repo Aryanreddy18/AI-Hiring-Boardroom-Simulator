@@ -93,6 +93,28 @@ a {
   box-shadow: 0 24px 60px rgba(39, 67, 64, 0.08);
 }
 
+.stage-indicator {
+  display: flex;
+  gap: 10px;
+  padding: 12px;
+}
+
+.stage-indicator__item {
+  flex: 1;
+  padding: 12px 14px;
+  border-radius: 16px;
+  background: rgba(255, 255, 255, 0.7);
+  border: 1px solid rgba(23, 48, 45, 0.08);
+  font-weight: 600;
+  color: #44625e;
+}
+
+.stage-indicator__item.is-active {
+  background: rgba(15, 118, 110, 0.12);
+  color: #0f766e;
+  border-color: rgba(15, 118, 110, 0.28);
+}
+
 .composer-panel {
   padding: 32px;
 }
@@ -138,8 +160,18 @@ a {
   font-weight: 600;
 }
 
+.field-hint {
+  color: #44625e;
+  font-size: 0.82rem;
+}
+
 .field--wide {
   grid-column: span 2;
+}
+
+.field--active .question-card {
+  border-color: rgba(15, 118, 110, 0.35);
+  box-shadow: 0 0 0 2px rgba(15, 118, 110, 0.1);
 }
 
 .form-actions,
@@ -277,6 +309,13 @@ a {
   gap: 12px;
 }
 
+.question-card__head {
+  display: flex;
+  align-items: start;
+  justify-content: space-between;
+  gap: 12px;
+}
+
 .agent-card {
   padding: 22px;
   border-radius: 24px;
@@ -384,6 +423,53 @@ a {
   gap: 16px;
 }
 
+.live-interview-grid {
+  display: grid;
+  grid-template-columns: minmax(300px, 0.9fr) minmax(0, 1.1fr);
+  gap: 16px;
+  margin-bottom: 16px;
+}
+
+.video-panel,
+.question-queue {
+  padding: 16px;
+  border-radius: 20px;
+  background: rgba(243, 248, 247, 0.96);
+  border: 1px solid rgba(23, 48, 45, 0.08);
+}
+
+.video-panel__feed {
+  width: 100%;
+  border-radius: 14px;
+  aspect-ratio: 16 / 10;
+  object-fit: cover;
+  background: #0b1d1b;
+}
+
+.video-panel__error {
+  color: #a13a3b;
+  font-weight: 600;
+}
+
+.question-queue {
+  display: grid;
+  align-content: start;
+  gap: 10px;
+}
+
+.question-pill {
+  text-align: left;
+  padding: 12px 14px;
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.9);
+  border: 1px solid rgba(23, 48, 45, 0.14);
+}
+
+.question-pill.is-active {
+  background: rgba(15, 118, 110, 0.12);
+  border-color: rgba(15, 118, 110, 0.35);
+}
+
 .transcript-card {
   padding: 18px;
 }
@@ -394,6 +480,10 @@ a {
   .agent-grid,
   .metrics-grid,
   .debate-stats {
+    grid-template-columns: 1fr;
+  }
+
+  .live-interview-grid {
     grid-template-columns: 1fr;
   }
 }
@@ -415,5 +505,9 @@ a {
   .field--wide {
     grid-template-columns: 1fr;
     grid-column: auto;
+  }
+
+  .stage-indicator {
+    flex-direction: column;
   }
 }

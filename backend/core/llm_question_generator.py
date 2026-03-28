@@ -78,7 +78,8 @@ def generate_questions_with_featherless(
     try:
         with urllib.request.urlopen(req, timeout=15) as response:
             raw = response.read().decode("utf-8")
-    except (urllib.error.URLError, TimeoutError, ValueError):
+    except Exception:
+        # Never fail interview start because of upstream LLM/network instability.
         return _default_question_bank(job_features, rounds), "rule_based_fallback"
 
     try:
