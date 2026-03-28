@@ -1,7 +1,18 @@
 from __future__ import annotations
 
+from io import BytesIO
 import re
 from typing import Dict, List, Set
+
+
+SUPPORTED_RESUME_EXTENSIONS = {
+    ".pdf",
+    ".doc",
+    ".docx",
+    ".txt",
+    ".md",
+    ".rtf",
+}
 
 SKILL_KEYWORDS = {
     "python",
@@ -131,3 +142,75 @@ def preprocess_document(text: str) -> Dict[str, object]:
         "skills": extract_skills(normalized),
         "years_of_experience": extract_years_of_experience(normalized),
     }
+
+
+def extract_resume_text_from_file(filename: str | None, content: bytes) -> str:
+    if not content:
+        raise ValueError("Uploaded resume file is empty.")
+
+    extension = ""
+    if filename and "." in filename:
+        extension = filename[filename.rfind(".") :].lower()
+
+    if extension and extension not in SUPPORTED_RESUME_EXTENSIONS:
+        supported = ", ".join(sorted(SUPPORTED_RESUME_EXTENSIONS))
+        raise ValueError(f"Unsupported resume format '{extension}'. Supported formats: {supported}.")
+
+    if extension == ".pdf":
+        return _extract_pdf_text(content)
+    if extension == ".docx":
+        return _extract_docx_text(content)
+    if extension == ".doc":
+        return _extract_legacy_doc_text(content)
+    return _decode_text_content(content)
+
+
+def _extract_pdf_text(content: bytes) -> str:
+    try:
+        from pypdf import PdfReader
+    except ImportError as exc:
+        raise ValueError("PDF parsing dependency is missing. Install 'pypdf'.") from exc
+
+    try:
+        reader = PdfReader(BytesIO(content))
+    except Exception as exc:
+        raise ValueError("Unable to read the PDF resume file.") from exc
+
+    pages = [(page.extract_text() or "").strip() for page in reader.pages]
+    text = "\n".join(page for page in pages if page)
+    return text.strip()
+
+
+def _extract_docx_text(content: bytes) -> str:
+    try:
+        from docx import Document
+    except ImportError as exc:
+        raise ValueError("Word parsing dependency is missing. Install 'python-docx'.") from exc
+
+    try:
+        doc = Document(BytesIO(content))
+    except Exception as exc:
+        raise ValueError("Unable to read the DOCX resume file.") from exc
+
+    lines = [paragraph.text.strip() for paragraph in doc.paragraphs if paragraph.text.strip()]
+    return "\n".join(lines).strip()
+
+
+def _extract_legacy_doc_text(content: bytes) -> str:
+    # Legacy .doc is a binary format. We perform a best-effort extraction
+    # of printable segments, and ask for .docx/.pdf if no useful content exists.
+    decoded = content.decode("latin-1", errors="ignore")
+    words = re.findall(r"[A-Za-z][A-Za-z0-9@+.#/\-]{1,}", decoded)
+    text = " ".join(words)
+    if len(text) < 40:
+        raise ValueError("Unable to extract text from .doc file. Please upload .docx or .pdf.")
+    return text
+
+
+def _decode_text_content(content: bytes) -> str:
+    for encoding in ("utf-8", "utf-16", "latin-1"):
+        try:
+            return content.decode(encoding).strip()
+        except UnicodeDecodeError:
+            continue
+    raise ValueError("Unable to decode resume file content.")

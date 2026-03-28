@@ -2,21 +2,17 @@ from __future__ import annotations
 
 from typing import List
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, File, Form, HTTPException, UploadFile
 from pydantic import BaseModel, Field
 
 from backend.core.decision_engine import HiringDecisionEngine
 from backend.core.interview_engine import InterviewEngine
+from backend.utils.parser import extract_resume_text_from_file
 
 
 router = APIRouter(prefix="/api/hiring", tags=["hiring"])
 engine = HiringDecisionEngine()
 interview_engine = InterviewEngine()
-
-
-class HiringEvaluateRequest(BaseModel):
-    resume_text: str = Field(..., min_length=20, description="Candidate resume content")
-    jd_text: str = Field(..., min_length=20, description="Job description content")
 
 
 class HiringEvaluateResponse(BaseModel):
@@ -28,15 +24,20 @@ class HiringEvaluateResponse(BaseModel):
 
 
 @router.post("/evaluate", response_model=HiringEvaluateResponse)
-def evaluate_candidate(payload: HiringEvaluateRequest):
-    return engine.evaluate(payload.resume_text, payload.jd_text)
+async def evaluate_candidate(
+    resume_file: UploadFile = File(..., description="Candidate resume file (PDF, DOCX, DOC, TXT, MD, RTF)"),
+    jd_text: str = Form(..., min_length=20, description="Job description content"),
+):
+    try:
+        resume_bytes = await resume_file.read()
+        resume_text = extract_resume_text_from_file(resume_file.filename, resume_bytes)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
 
+    if len(resume_text.strip()) < 20:
+        raise HTTPException(status_code=400, detail="Resume content is too short after extraction.")
 
-class StartInterviewRequest(BaseModel):
-    resume_text: str = Field(..., min_length=20)
-    jd_text: str = Field(..., min_length=20)
-    candidate_name: str = Field(default="Candidate", min_length=1)
-    max_rounds: int = Field(default=2, ge=1, le=3)
+    return engine.evaluate(resume_text, jd_text)
 
 
 class InterviewAnswerItem(BaseModel):
@@ -54,12 +55,26 @@ def initiate_interview():
 
 
 @router.post("/interview/start")
-def start_interview(payload: StartInterviewRequest):
+async def start_interview(
+    resume_file: UploadFile = File(..., description="Candidate resume file (PDF, DOCX, DOC, TXT, MD, RTF)"),
+    jd_text: str = Form(..., min_length=20, description="Job description content"),
+    candidate_name: str = Form(default="Candidate", min_length=1),
+    max_rounds: int = Form(default=2, ge=1, le=3),
+):
+    try:
+        resume_bytes = await resume_file.read()
+        resume_text = extract_resume_text_from_file(resume_file.filename, resume_bytes)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+    if len(resume_text.strip()) < 20:
+        raise HTTPException(status_code=400, detail="Resume content is too short after extraction.")
+
     return interview_engine.start_interview(
-        resume_text=payload.resume_text,
-        jd_text=payload.jd_text,
-        candidate_name=payload.candidate_name,
-        max_rounds=payload.max_rounds,
+        resume_text=resume_text,
+        jd_text=jd_text,
+        candidate_name=candidate_name,
+        max_rounds=max_rounds,
     )
 
 

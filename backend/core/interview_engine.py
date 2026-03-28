@@ -48,8 +48,8 @@ class InterviewEngine:
 
     def initiate(self) -> Dict[str, object]:
         return {
-            "message": "Interview setup ready. Please provide resume_text and jd_text to start.",
-            "required_fields": ["resume_text", "jd_text"],
+            "message": "Interview setup ready. Please provide resume_file and jd_text to start.",
+            "required_fields": ["resume_file", "jd_text"],
             "optional_fields": ["candidate_name", "max_rounds"],
         }
 
